@@ -94,6 +94,12 @@ export const utilBuildChatflow = async (req: Request, socketIO?: Server, isInter
                     fileUploads[i] = omit(upload, ['data'])
                 }
 
+                if (upload.type === 'url' && upload.data) {
+                    const filename = upload.name
+                    const urlData = upload.data
+                    fileUploads[i] = { data: urlData, name: filename, type: 'url', mime: upload.mime ?? 'image/png' }
+                }
+
                 // Run Speech to Text conversion
                 if (upload.mime === 'audio/webm' || upload.mime === 'audio/mp4' || upload.mime === 'audio/ogg') {
                     logger.debug(`Attempting a speech to text conversion...`)
@@ -417,7 +423,11 @@ export const utilBuildChatflow = async (req: Request, socketIO?: Server, isInter
         return result
     } catch (e) {
         logger.error('[server]: Error:', e)
-        throw new InternalFlowiseError(StatusCodes.INTERNAL_SERVER_ERROR, getErrorMessage(e))
+        if (e instanceof InternalFlowiseError && e.statusCode === StatusCodes.UNAUTHORIZED) {
+            throw e
+        } else {
+            throw new InternalFlowiseError(StatusCodes.INTERNAL_SERVER_ERROR, getErrorMessage(e))
+        }
     }
 }
 
